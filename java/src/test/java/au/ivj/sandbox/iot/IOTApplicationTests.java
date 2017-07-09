@@ -204,9 +204,11 @@ public class IOTApplicationTests {
          * By default Spring Data Rest won't exporse "POST/PUT" for a sublist. However, we can always implement an endpoint
          * to handle a POST/PUT to devices/1/sensors in the controller. Not required here though, just a PATCH is enough.
          */
+        String createdDevicePath = createdDevice.getHeaders().get("Location").get(0);
+        String createdSensorPath = createdSensor.getHeaders().get("Location").get(0);
         ResponseEntity<Void> updatedDevice = testRestTemplateAuthenticated.exchange(
-                RequestEntity.patch(URI.create(createdDevice.getHeaders().get("Location").get(0)))
-                        .body(ImmutableMap.of("sensors", Collections.singletonList(createdSensor.getHeaders().get("Location").get(0)))),
+                RequestEntity.patch(URI.create(createdDevicePath))
+                        .body(ImmutableMap.of("sensors", Collections.singletonList(createdSensorPath))),
                 Void.class
         );
         assertEquals(HttpStatus.OK, updatedDevice.getStatusCode());
@@ -218,6 +220,81 @@ public class IOTApplicationTests {
                 .toObject(new ParameterizedTypeReference<Resources<Sensor>>() {});
         assertNotNull(sensors);
         assertEquals("test sensor rest", sensors.getContent().iterator().next().getName());
+
+        ResponseEntity<Void> createdReading = testRestTemplateAuthenticated.postForEntity(
+                URI.create(baseTraverson().follow("readings").asLink().getHref()),
+                new SampleClientSideReading(
+                        new Date(),
+                        2d,
+                        URI.create(createdDevicePath),
+                        URI.create(createdSensorPath),
+                        "Note"
+                ),
+                Void.class
+        );
+        assertEquals(HttpStatus.CREATED, createdSensor.getStatusCode());
+
+    }
+
+    /**
+     * This is how an entity used only on the client side would look like
+     */
+    public class SampleClientSideReading {
+        Date dateTime;
+        Double reading;
+        URI device;
+        URI sensor;
+        String note;
+
+        public SampleClientSideReading() {}
+
+        public SampleClientSideReading(Date dateTime, Double reading, URI device, URI sensor, String note) {
+            this.dateTime = dateTime;
+            this.reading = reading;
+            this.device = device;
+            this.sensor = sensor;
+            this.note = note;
+        }
+
+        public Date getDateTime() {
+            return dateTime;
+        }
+
+        public void setDateTime(Date dateTime) {
+            this.dateTime = dateTime;
+        }
+
+        public Double getReading() {
+            return reading;
+        }
+
+        public void setReading(Double reading) {
+            this.reading = reading;
+        }
+
+        public URI getDevice() {
+            return device;
+        }
+
+        public void setDevice(URI device) {
+            this.device = device;
+        }
+
+        public URI getSensor() {
+            return sensor;
+        }
+
+        public void setSensor(URI sensor) {
+            this.sensor = sensor;
+        }
+
+        public String getNote() {
+            return note;
+        }
+
+        public void setNote(String note) {
+            this.note = note;
+        }
     }
 
     @Configuration
