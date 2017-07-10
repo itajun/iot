@@ -128,7 +128,7 @@ public class IOTApplicationTests {
         Sensor sensor = new Sensor();
         sensor.setName("test sensor");
         sensor.setType(Sensor.SensorType.HUMIDITY);
-        sensor.setUnity(Sensor.SensorMeasurementUnity.UNITY);
+        sensor.setUnit(Sensor.SensorMeasurementUnit.UNIT);
         Sensor saved = sensorRepository.save(sensor);
         Device device = deviceRepository.findByName("test device").get();
         assertEquals(device.getSensors().size(), 0);
@@ -213,7 +213,7 @@ public class IOTApplicationTests {
 
         Sensor sensor = new Sensor();
         sensor.setName("test sensor rest");
-        sensor.setUnity(Sensor.SensorMeasurementUnity.UNITY);
+        sensor.setUnit(Sensor.SensorMeasurementUnit.UNIT);
         sensor.setType(Sensor.SensorType.HUMIDITY);
         ResponseEntity<Void> createdSensor = testRestTemplateAuthenticated.postForEntity(
                 URI.create(baseTraverson().follow("sensors").asLink().getHref()),
@@ -266,6 +266,7 @@ public class IOTApplicationTests {
                 );
 
     }
+
     @Configuration
     public static class IOTApplicationTestConfiguration {
         @Bean
