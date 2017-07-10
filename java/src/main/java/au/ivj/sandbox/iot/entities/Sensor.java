@@ -15,7 +15,7 @@ public class Sensor {
     @Column(nullable = false)
     String name;
     SensorType type;
-    SensorMeasurementUnity unity;
+    SensorMeasurementUnit unit;
 
     public Long getId() {
         return id;
@@ -41,12 +41,12 @@ public class Sensor {
         this.type = type;
     }
 
-    public SensorMeasurementUnity getUnity() {
-        return unity;
+    public SensorMeasurementUnit getUnit() {
+        return unit;
     }
 
-    public void setUnity(SensorMeasurementUnity unity) {
-        this.unity = unity;
+    public void setUnit(SensorMeasurementUnit unit) {
+        this.unit = unit;
     }
 
     /**
@@ -60,10 +60,11 @@ public class Sensor {
     }
 
     /**
-     * Unity of measurement
+     * Unit of measurement
      */
-    public enum SensorMeasurementUnity {
-        UNITY,
+    public enum SensorMeasurementUnit
+    {
+        UNIT,
         DEGREE,
         VOLTAGE
     }
@@ -78,7 +79,7 @@ public class Sensor {
         if (id != null ? !id.equals(sensor.id) : sensor.id != null) return false;
         if (name != null ? !name.equals(sensor.name) : sensor.name != null) return false;
         if (type != sensor.type) return false;
-        return unity == sensor.unity;
+        return unit == sensor.unit;
     }
 
     @Override
@@ -86,7 +87,7 @@ public class Sensor {
         int result = id != null ? id.hashCode() : 0;
         result = 31 * result + (name != null ? name.hashCode() : 0);
         result = 31 * result + (type != null ? type.hashCode() : 0);
-        result = 31 * result + (unity != null ? unity.hashCode() : 0);
+        result = 31 * result + (unit != null ? unit.hashCode() : 0);
         return result;
     }
 }

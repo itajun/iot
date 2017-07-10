@@ -6,9 +6,8 @@ import au.ivj.sandbox.iot.entities.Sensor;
 import au.ivj.sandbox.iot.repositories.DeviceRepository;
 import au.ivj.sandbox.iot.repositories.ReadingRepository;
 import au.ivj.sandbox.iot.repositories.SensorRepository;
-import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,23 +27,31 @@ import org.springframework.hateoas.Resources;
 import org.springframework.hateoas.client.Hop;
 import org.springframework.hateoas.client.Traverson;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 
 import javax.persistence.EntityManager;
 import java.net.URI;
-import java.nio.charset.Charset;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.Date;
+import java.util.Optional;
 
-import static junit.framework.TestCase.*;
+import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertNotNull;
+import static junit.framework.TestCase.assertNull;
+import static junit.framework.TestCase.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = {IOTApplication.class, IOTApplicationTests.IOTApplicationTestConfiguration.class},
@@ -56,6 +63,9 @@ public class IOTApplicationTests {
 
     @LocalServerPort
     int localServerPort;
+
+    @Autowired
+    private WebApplicationContext wac;
 
     @Autowired
     EntityManager entityManager;
@@ -75,6 +85,13 @@ public class IOTApplicationTests {
 	@Autowired
 	ReadingRepository readingRepository;
 
+    private MockMvc mockMvc;
+
+    @Before
+    public void setup() {
+        this.mockMvc = MockMvcBuilders.webAppContextSetup(this.wac).build();
+    }
+
     private Traverson baseTraverson() {
         return new Traverson(URI.create(String.format("http://localhost:%d/", localServerPort)), MediaTypes.HAL_JSON);
     }
@@ -84,13 +101,16 @@ public class IOTApplicationTests {
     }
 
     @Test
-    public void allTests() {
+    public void integrationTest() throws Exception
+    {
         deviceTestsJPA();
         sensorTestsJPA();
         readingTestsJPA();
         profileTestsRest();
         retrievingRestTest();
         postingRestTest();
+        readingControllerTest();
+        readingProjectionTest();
     }
 
     public void deviceTestsJPA() {
@@ -99,28 +119,31 @@ public class IOTApplicationTests {
         device.setLocation("test location");
         deviceRepository.save(device);
 
-        Device byName = deviceRepository.findByName("test device");
-        assertEquals(byName.getName(), "test device");
+        Optional<Device> byName = deviceRepository.findByName("test device");
+        assertTrue(byName.isPresent());
+        assertEquals(byName.get().getName(), "test device");
     }
 
     public void sensorTestsJPA() {
         Sensor sensor = new Sensor();
         sensor.setName("test sensor");
         sensor.setType(Sensor.SensorType.HUMIDITY);
-        sensor.setUnity(Sensor.SensorMeasurementUnity.UNITY);
+        sensor.setUnit(Sensor.SensorMeasurementUnit.UNIT);
         Sensor saved = sensorRepository.save(sensor);
-        Device device = deviceRepository.findByName("test device");
+        Device device = deviceRepository.findByName("test device").get();
         assertEquals(device.getSensors().size(), 0);
         device.getSensors().add(saved);
         deviceRepository.save(device);
-        Device byName = deviceRepository.findByName("test device");
-        assertNotNull(byName);
+        Device byName = deviceRepository.findByName("test device").get();
         assertEquals(byName.getSensors().size(), 1);
         assertEquals(byName.getSensors().get(0).getName(), "test sensor");
+        Optional<Sensor> foundSensor = sensorRepository.findByNameAndDeviceName("test sensor", "test device");
+        assertTrue(foundSensor.isPresent());
+        assertEquals(foundSensor.get().getName(), "test sensor");
     }
 
     public void readingTestsJPA() {
-        Device device = deviceRepository.findByName("test device");
+        Device device = deviceRepository.findByName("test device").get();
         Sensor sensor = device.getSensors().get(0);
 
         for (int i = 0; i < 10; i++) {
@@ -190,7 +213,7 @@ public class IOTApplicationTests {
 
         Sensor sensor = new Sensor();
         sensor.setName("test sensor rest");
-        sensor.setUnity(Sensor.SensorMeasurementUnity.UNITY);
+        sensor.setUnit(Sensor.SensorMeasurementUnit.UNIT);
         sensor.setType(Sensor.SensorType.HUMIDITY);
         ResponseEntity<Void> createdSensor = testRestTemplateAuthenticated.postForEntity(
                 URI.create(baseTraverson().follow("sensors").asLink().getHref()),
@@ -295,6 +318,30 @@ public class IOTApplicationTests {
         public void setNote(String note) {
             this.note = note;
         }
+    }
+
+    public void readingControllerTest() throws Exception
+    {
+        mockMvc.perform(get("/postReading?device=test device&sensor=test sensor&value=2.1&when=01012017101010")
+                .accept(MediaType.TEXT_PLAIN))
+                .andExpect(status().isOk());
+    }
+
+    public void readingProjectionTest() throws Exception
+    {
+        mockMvc.perform(
+                get("/readings?projection=readingSummary").accept(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$._embedded.readings[0].sensorFQN").exists())
+                .andExpect(status().isOk()
+        );
+
+        mockMvc.perform(
+                get("/readings/search/findSummaryForDevice?projection=readingSummary&device=test device&page=1&size=10")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$._embedded.readings[0].sensorFQN").exists())
+                .andExpect(status().isOk()
+                );
+
     }
 
     @Configuration
