@@ -51,7 +51,7 @@ public class ReadingController
     public void postReading(@RequestParam(value="device") String deviceName,
                             @RequestParam(value="sensor") String sensorName,
                             @RequestParam(value="value") Double value,
-                            @RequestParam(value="when", required = false) @DateTimeFormat(pattern="ddMMYYYYHHmmss")
+                            @RequestParam(value="when", required = false) @DateTimeFormat(pattern="ddMMyyyyHHmmss")
                                         Date when,
                             @RequestParam(value="note", required = false) String note) {
         Optional<Device> foundDevice = deviceRepository.findByName(deviceName);
