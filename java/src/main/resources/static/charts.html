@@ -1,19 +1,17 @@
 <html>
   <head>
-	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
-	<script src="https://www.google.com/jsapi"></script>
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+      <script src="https://www.google.com/jsapi"></script>
 
-	<script>
+      <script>
 		// 3. This function fires when Google Charts has been fully loaded
 		function drawChart() {
 
 		  // 4. Retrieve the raw JSON data
-		  var jsonData = $.ajax({
+		  $.ajax({
 			cache: false,
-			url: 'http://localhost:8080/readings?limit=200',
-			dataType: 'json',
-		  }).done(function (results) {
-
+			url: 'http://iot.vieiras.xyz/readings?projection=readingSummary&size=200&sort=dateTime,desc',
+			dataType: 'json',		  }).done(function (results) {
 			// 5. Create a new DataTable (Charts expects data in this format)
 			var data = new google.visualization.DataTable();
 
@@ -23,18 +21,19 @@
 			data.addColumn('number',   'Light');
 			data.addColumn('number',   'Moisture');
 
-			// 7. Cycle through the records, adding one row per record
-			$.each(results._embedded.readings, function(row) {
-			  data.addRow([
+            var prevTemp, prevLight, prevMoisture;
+            // 7. Cycle through the records, adding one row per record
+			results._embedded.readings.forEach(function(row) {
+              data.addRow([
 				  (new Date(row.dateTime)),
-				  row.sensorFQN.endsWith('Temperature') ? parseFloat( row.value ) : null,
-				  row.sensorFQN.endsWith('Light') ? parseFloat( row.value ) : null,
-				  row.sensorFQN.endsWith('Moisture') ? parseFloat( row.value ) : null
+				  (row.sensorFQN + "").endsWith('Temperature') ? (prevTemp = parseFloat( row.reading )) : prevTemp,
+				  (row.sensorFQN + "").endsWith('Light') ? (prevLight = parseFloat( row.reading )) : prevLight,
+				  (row.sensorFQN + "").endsWith('Moisture') ? (prevMoisture = parseFloat( row.reading )) : prevMoisture
 				]);
 			});
 
 			// 8. Create a new line chart
-			var chart = new google.visualization.LineChart($('#chart').get(0));
+			var chart = new google.visualization.LineChart($('#gardenCharts').get(0));
 
 			// 9. Render the chart, passing in our DataTable and any config data
 			chart.draw(data, {
