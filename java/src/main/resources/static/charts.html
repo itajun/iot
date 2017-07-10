@@ -10,7 +10,7 @@
 		  // 4. Retrieve the raw JSON data
 		  $.ajax({
 			cache: false,
-			url: 'http://iot.vieiras.xyz/readings?projection=readingSummary&size=200&sort=dateTime,desc',
+			url: 'http://iot.vieiras.xyz/readings/search/findSummaryForDevice?projection=readingSummary&device=Laptop&sort=dateTime,desc&size=200',
 			dataType: 'json',		  }).done(function (results) {
 			// 5. Create a new DataTable (Charts expects data in this format)
 			var data = new google.visualization.DataTable();
