@@ -50,6 +50,7 @@ import static junit.framework.TestCase.assertNotNull;
 import static junit.framework.TestCase.assertNull;
 import static junit.framework.TestCase.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @RunWith(SpringRunner.class)
@@ -109,6 +110,7 @@ public class IOTApplicationTests {
         retrievingRestTest();
         postingRestTest();
         readingControllerTest();
+        readingProjectionTest();
     }
 
     public void deviceTestsJPA() {
@@ -248,6 +250,22 @@ public class IOTApplicationTests {
                 .andExpect(status().isOk());
     }
 
+    public void readingProjectionTest() throws Exception
+    {
+        mockMvc.perform(
+                get("/readings?projection=readingSummary").accept(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$._embedded.readings[0].sensorFQN").exists())
+                .andExpect(status().isOk()
+        );
+
+        mockMvc.perform(
+                get("/readings/search/findSummaryForDevice?projection=readingSummary&device=test device&page=1&size=10")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$._embedded.readings[0].sensorFQN").exists())
+                .andExpect(status().isOk()
+                );
+
+    }
     @Configuration
     public static class IOTApplicationTestConfiguration {
         @Bean
