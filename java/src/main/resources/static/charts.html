@@ -4,14 +4,30 @@
       <script src="https://www.google.com/jsapi"></script>
 
       <script>
+	  $.fn.groupBy = function(predicate) {
+		  var $array = $(this),
+			  grouped = {};
+
+		  $.each($array, function (idx, obj) {
+			var $obj = $(obj);
+				groupKey = predicate($obj);
+			if (typeof(grouped[groupKey]) === "undefined") {
+			  grouped[groupKey] = $();
+			}
+			grouped[groupKey] = grouped[groupKey].add($obj);
+		  });
+
+		  return grouped;
+		}
+	  
 		// 3. This function fires when Google Charts has been fully loaded
 		function drawChart() {
-
 		  // 4. Retrieve the raw JSON data
 		  $.ajax({
 			cache: false,
 			url: 'http://iot.vieiras.xyz/readings/search/findSummaryForDevice?projection=readingSummary&device=Laptop&sort=dateTime,desc&size=200',
 			dataType: 'json',		  }).done(function (results) {
+			
 			// 5. Create a new DataTable (Charts expects data in this format)
 			var data = new google.visualization.DataTable();
 
@@ -21,15 +37,32 @@
 			data.addColumn('number',   'Light');
 			data.addColumn('number',   'Moisture');
 
-            var prevTemp, prevLight, prevMoisture;
-            // 7. Cycle through the records, adding one row per record
-			results._embedded.readings.forEach(function(row) {
-              data.addRow([
-				  (new Date(row.dateTime)),
-				  (row.sensorFQN + "").endsWith('Temperature') ? (prevTemp = parseFloat( row.reading )) : prevTemp,
-				  (row.sensorFQN + "").endsWith('Light') ? (prevLight = parseFloat( row.reading )) : prevLight,
-				  (row.sensorFQN + "").endsWith('Moisture') ? (prevMoisture = parseFloat( row.reading )) : prevMoisture
-				]);
+            // 7. Maybe I went overboard here, but in order to have a smooth chart, I'm grouping the readings
+			// in 15 minute groups and then avaraging them. In addition, I group the sensors so that it looks as if
+			// we had a simultaneous measurement of all sensors, where in fact they are separate readings.
+			$.each($(results._embedded.readings).groupBy(function (row) {
+					var dateTime = new Date($(row).attr('dateTime'));
+					return dateTime - (dateTime % (15 * 60 * 1000)); // 15 minutes groups
+				   }),
+				function(dateTime, records) {
+				  var dateTime = new Date(parseInt(dateTime));
+				  var row = [dateTime, 0, 0, 0];
+				  var groupedRecords = $(records.toArray()).groupBy(function(record) { return $(record).attr('sensorFQN')});
+				  $.each(groupedRecords, function(sensorFQN, readings) {
+					  /* lazy... don't do it :) */
+					  var average = readings.map(function(i,o) {return o.reading}).toArray()
+							.reduce(function(sum, a) { return sum + a },0) / (readings.length || 1);
+					  if ((sensorFQN + "").endsWith('Temperature')) {
+						row [1] = average;
+					  }
+					  if ((sensorFQN + "").endsWith('Light')) {
+						row [2] = average;
+					  }
+					  if ((sensorFQN + "").endsWith('Moisture')) {
+						row [3] = average;
+					  }
+				  });
+				  data.addRow(row);
 			});
 
 			// 8. Create a new line chart
@@ -55,5 +88,5 @@
 	</script>
   </head>
   <body>
-  <div id="chart" style="width: 600px; height: 400px;">Loading chart...</div>
+  <div id="gardenCharts" style="width: 600px; height: 400px;">Loading chart...</div>
 </html>
