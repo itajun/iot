@@ -109,7 +109,7 @@ public class IOTApplicationTests {
         profileTestsRest();
         retrievingRestTest();
         postingRestTest();
-        readingControllerTest();
+        lightweightControllerTest();
         readingProjectionTest();
     }
 
@@ -320,9 +320,13 @@ public class IOTApplicationTests {
         }
     }
 
-    public void readingControllerTest() throws Exception
+    public void lightweightControllerTest() throws Exception
     {
         mockMvc.perform(get("/postReading?device=test device&sensor=test sensor&value=2.1&when=01012017101010")
+                .accept(MediaType.TEXT_PLAIN))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/postLog?device=test device&group=test group&details=test details&when=01012017101010")
                 .accept(MediaType.TEXT_PLAIN))
                 .andExpect(status().isOk());
     }

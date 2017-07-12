@@ -1,8 +1,10 @@
 package au.ivj.sandbox.iot.controllers;
 
 import au.ivj.sandbox.iot.entities.Device;
+import au.ivj.sandbox.iot.entities.DeviceLog;
 import au.ivj.sandbox.iot.entities.Reading;
 import au.ivj.sandbox.iot.entities.Sensor;
+import au.ivj.sandbox.iot.repositories.DeviceLogRepository;
 import au.ivj.sandbox.iot.repositories.DeviceRepository;
 import au.ivj.sandbox.iot.repositories.ReadingRepository;
 import au.ivj.sandbox.iot.repositories.SensorRepository;
@@ -24,9 +26,9 @@ import java.util.Optional;
  * Exposes some methods with simplified signature to be called by simple devices like Arduino and ESP8266.
  */
 @Controller
-public class ReadingController
+public class LightweightController
 {
-    private static final Logger LOGGER = Logger.getLogger(ReadingController.class);
+    private static final Logger LOGGER = Logger.getLogger(LightweightController.class);
 
     @Autowired
     SensorRepository sensorRepository;
@@ -36,6 +38,9 @@ public class ReadingController
 
     @Autowired
     ReadingRepository readingRepository;
+
+    @Autowired
+    DeviceLogRepository deviceLogRepository;
 
     /**
      * Posts a new reading
@@ -52,7 +57,7 @@ public class ReadingController
                             @RequestParam(value="sensor") String sensorName,
                             @RequestParam(value="value") Double value,
                             @RequestParam(value="when", required = false) @DateTimeFormat(pattern="ddMMyyyyHHmmss")
-                                        Date when,
+                                    Date when,
                             @RequestParam(value="note", required = false) String note) {
         Optional<Device> foundDevice = deviceRepository.findByName(deviceName);
         Device device = foundDevice.orElseThrow(() ->
@@ -69,5 +74,33 @@ public class ReadingController
         reading.setReading(value);
         reading.setNote(note);
         readingRepository.save(reading);
+    }
+
+    /**
+     * Posts a new log
+     * @param deviceName Device name
+     * @param group Optional group
+     * @param details Log details
+     * @param when When the eventtook place. If not provided, will use current date/time
+     */
+    @RolesAllowed("USER")
+    @RequestMapping(path = "/postLog", method = RequestMethod.GET)
+    @ResponseStatus(HttpStatus.OK)
+    public void postLog(@RequestParam(value="device") String deviceName,
+                            @RequestParam(value="group", required = false) String group,
+                            @RequestParam(value="details") String details,
+                            @RequestParam(value="when", required = false) @DateTimeFormat(pattern="ddMMyyyyHHmmss")
+                                    Date when) {
+        Optional<Device> foundDevice = deviceRepository.findByName(deviceName);
+        Device device = foundDevice.orElseThrow(() ->
+                new IllegalArgumentException(String.format("Couldn't find device [%s]", deviceName)));
+
+        DeviceLog deviceLog = new DeviceLog();
+        deviceLog.setDateTime(when == null ? new Date() : when);
+        deviceLog.setDetails(details);
+        deviceLog.setDevice(foundDevice.get());
+        deviceLog.setGroupName(group);
+
+        deviceLogRepository.save(deviceLog);
     }
 }
