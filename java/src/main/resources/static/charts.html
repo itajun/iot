@@ -1,9 +1,9 @@
 <html>
-  <head>
-      <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
-      <script src="https://www.google.com/jsapi"></script>
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="https://www.google.com/jsapi"></script>
 
-      <script>
+    <script>
 	  $.fn.groupBy = function(predicate) {
 		  var $array = $(this),
 			  grouped = {};
@@ -82,11 +82,30 @@
 		google.load('visualization', '1', {
 		  packages: ['corechart']
 		});
+		
+		function drawLogs() {
+		  // 4. Retrieve the raw JSON data
+		  $.ajax({
+			cache: false,
+			url: 'http://iot.vieiras.xyz/deviceLogs?sort=dateTime,desc&limit=10',
+			dataType: 'json',		  }).done(function (results) {
+				var list = $("#gardenLogs").html('<ul></ul>').find('ul');
+				var deviceLogs = results._embedded.deviceLogs;
+				$.each(deviceLogs, function (i, result) {
+					var dt = new Date(result.dateTime);
+					var formatter = new google.visualization.DateFormat({formatType: 'short'});
+					list.append("<li>" +(i+1) + " [" + formatter.formatValue(dt) + "]: " + result.groupName + " - " +
+					result.details + "</li>")
+				})
+			})
+		}		
 
 		// 2. Set a callback function to fire when loading is complete
 		google.setOnLoadCallback(drawChart);
+		$(drawLogs);
 	</script>
-  </head>
-  <body>
-  <div id="gardenCharts" style="width: 600px; height: 400px;">Loading chart...</div>
+</head>
+<body>
+<div id="gardenCharts" style="width: 600px; height: 400px;">Loading chart...</div>
+<div id="gardenLogs" style="width: 600px; height: 400px;">Loading logs...</div>
 </html>
