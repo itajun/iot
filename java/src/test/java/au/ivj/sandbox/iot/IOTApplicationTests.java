@@ -1,8 +1,10 @@
 package au.ivj.sandbox.iot;
 
 import au.ivj.sandbox.iot.entities.Device;
+import au.ivj.sandbox.iot.entities.DeviceLog;
 import au.ivj.sandbox.iot.entities.Reading;
 import au.ivj.sandbox.iot.entities.Sensor;
+import au.ivj.sandbox.iot.repositories.DeviceLogRepository;
 import au.ivj.sandbox.iot.repositories.DeviceRepository;
 import au.ivj.sandbox.iot.repositories.ReadingRepository;
 import au.ivj.sandbox.iot.repositories.SensorRepository;
@@ -82,8 +84,11 @@ public class IOTApplicationTests {
 	@Autowired
 	SensorRepository sensorRepository;
 
-	@Autowired
-	ReadingRepository readingRepository;
+    @Autowired
+    ReadingRepository readingRepository;
+
+    @Autowired
+    DeviceLogRepository deviceLogRepository;
 
     private MockMvc mockMvc;
 
@@ -161,6 +166,25 @@ public class IOTApplicationTests {
         assertEquals(allReadings.getTotalPages(), 2);
         assertEquals(device.getName(), allReadings.iterator().next().getDevice().getName());
         assertEquals(sensor.getName(), allReadings.iterator().next().getSensor().getName());
+    }
+
+    public void deviceLogTestsJPA() {
+        Device device = deviceRepository.findByName("test device").get();
+
+        for (int i = 0; i < 10; i++) {
+            DeviceLog deviceLog = new DeviceLog();
+            deviceLog.setDateTime(new Date());
+            deviceLog.setDevice(device);
+            deviceLog.setDetails("Details " + i);
+            deviceLog.setGroupName("test group");
+            deviceLogRepository.save(deviceLog);
+        }
+
+        Page<DeviceLog> allLogs = deviceLogRepository.findSummaryForDevice("test device", new PageRequest(1, 5, new Sort(Sort.Direction.DESC, "dateTime")));
+        assertEquals(allLogs.getSize(), 5);
+        assertEquals(allLogs.getTotalPages(), 2);
+        assertEquals(device.getName(), allLogs.iterator().next().getDevice().getName());
+        assertEquals("test group", allLogs.iterator().next().getGroupName());
     }
 
     public void profileTestsRest() {
